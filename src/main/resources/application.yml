@@ -1,0 +1,16 @@
+azure:
+  devops:
+    org-url: https://vf-commonit.visualstudio.com/ORG_HERE
+    pat: PAT_HERE
+
+proxy:
+  host: ${PROXY_HOST:10.248.20.80}
+  port: ${PROXY_PORT:8080}
+  enabled: ${PROXY_ENABLED:true}
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
