@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:8080
+
+### List all Git repositories
+GET {{baseUrl}}/azure/repositories
+Accept: application/json
+
+###
+
+### List active pull requests (default top=10)
+GET {{baseUrl}}/azure/pull-requests
+Accept: application/json
+
+###
+
+### List pull requests filtered by status and count
+GET {{baseUrl}}/azure/pull-requests?status=active&top=5
+Accept: application/json
+
+###
+
+### List pull requests filtered by repository
+GET {{baseUrl}}/azure/pull-requests?repositoryId=REPO_ID_HERE&status=active&top=10
+Accept: application/json
+
+###
+
+### Get pull request diff (change entries) by PR ID
+GET {{baseUrl}}/azure/pull-requests/1/diff
+Accept: application/json
+
+###
+
+### Get full unified diff (actual file content changes) by PR ID
+GET {{baseUrl}}/azure/pull-requests/1/full-diff
+Accept: application/json
+

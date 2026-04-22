@@ -2,6 +2,11 @@ azure:
   devops:
     org-url: https://vf-commonit.visualstudio.com/ORG_HERE
     pat: PAT_HERE
+  openai:
+    endpoint: https://PR-Review-Accelerator.services.ai.azure.com/api/projects/PR-Review-Accelerator
+    api-key: ${AZURE_OPENAI_API_KEY:}
+    agent-name: PR-Review-Accelerator
+    agent-version: "3"
 
 proxy:
   host: ${PROXY_HOST:10.248.20.80}

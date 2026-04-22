@@ -1,0 +1,40 @@
+@baseUrl = http://localhost:8080
+
+### Say hello to the PR-Review-Accelerator agent
+GET {{baseUrl}}/ai/hello
+Accept: application/json
+
+###
+
+### Chat — send a custom message to the agent
+POST {{baseUrl}}/ai/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "What kind of issues do you look for when reviewing a pull request?"
+}
+
+###
+
+### Chat — ask about best practices
+POST {{baseUrl}}/ai/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "What are the most important things to check in a code review?"
+}
+
+###
+
+### Ask the agent to review pull request #1
+GET {{baseUrl}}/ai/review/pull-requests/1
+Accept: application/json
+
+###
+
+### Ask the agent to review pull request #42
+GET {{baseUrl}}/ai/review/pull-requests/42
+Accept: application/json
+
