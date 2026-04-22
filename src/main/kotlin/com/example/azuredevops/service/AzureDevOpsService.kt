@@ -83,4 +83,54 @@ class AzureDevOpsService(
             throw ex
         }
     }
+
+    fun getPullRequestDiff(pullRequestId: Int): Map<String, Any> {
+        val (base, project) = parseOrgUrl()
+
+        // 1. Fetch PR to resolve repositoryId
+        val prUrl = "$base/$project/_apis/git/pullrequests/$pullRequestId?$apiVersion"
+        log.info("Fetching PR details from: $prUrl")
+        val pr = restClient.get().uri(prUrl).retrieve().body(Map::class.java)
+            ?: error("PR $pullRequestId not found")
+
+        @Suppress("UNCHECKED_CAST")
+        val repo = pr["repository"] as? Map<String, Any>
+            ?: error("PR $pullRequestId has no repository info")
+        val repositoryId = repo["id"] as? String
+            ?: error("PR $pullRequestId repository has no id")
+        log.info("PR $pullRequestId belongs to repository: $repositoryId")
+
+        // 2. Fetch iterations and pick the latest
+        val iterUrl = "$base/$project/_apis/git/repositories/$repositoryId/pullRequests/$pullRequestId/iterations?$apiVersion"
+        log.info("Fetching iterations from: $iterUrl")
+        val iterResponse = restClient.get().uri(iterUrl).retrieve().body(Map::class.java)
+            ?: error("No iterations found for PR $pullRequestId")
+
+        @Suppress("UNCHECKED_CAST")
+        val iterations = (iterResponse["value"] as? List<Map<String, Any>>) ?: emptyList()
+        val latestIteration = iterations.maxByOrNull { (it["id"] as? Int) ?: 0 }
+            ?: error("No iterations available for PR $pullRequestId")
+        val iterationId = latestIteration["id"] as? Int
+            ?: error("Iteration has no id")
+        log.info("Using latest iteration id: $iterationId")
+
+        // 3. Fetch changes for the latest iteration
+        val changesUrl = "$base/$project/_apis/git/repositories/$repositoryId" +
+                "/pullRequests/$pullRequestId/iterations/$iterationId/changes?$apiVersion"
+        log.info("Fetching diff from: $changesUrl")
+        val changesResponse = restClient.get().uri(changesUrl).retrieve().body(Map::class.java)
+            ?: emptyMap<String, Any>()
+
+        @Suppress("UNCHECKED_CAST")
+        val changeEntries = (changesResponse["changeEntries"] as? List<Any>) ?: emptyList()
+        log.info("Found ${changeEntries.size} changed files in PR $pullRequestId (iteration $iterationId)")
+
+        return mapOf(
+            "pullRequestId" to pullRequestId,
+            "repositoryId" to repositoryId,
+            "iterationId" to iterationId,
+            "totalChanges" to changeEntries.size,
+            "changes" to changeEntries
+        )
+    }
 }
