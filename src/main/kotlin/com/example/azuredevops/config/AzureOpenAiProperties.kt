@@ -7,6 +7,8 @@ data class AzureOpenAiProperties(
     val endpoint: String = "",
     val apiKey: String = "",
     val agentName: String = "PR-Review-Accelerator",
-    val agentVersion: String = "3"
+    val agentVersion: String = "4",
+    val apiVersion: String = "2025-03-01-preview",
+    val model: String = "gpt-4o"
 )
 

@@ -1,3 +1,6 @@
+# Spring local profile (contains secrets — never commit)
+application-lcl.yml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

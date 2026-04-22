@@ -25,7 +25,7 @@ Accept: application/json
 ###
 
 ### Get pull request diff (change entries) by PR ID
-GET {{baseUrl}}/azure/pull-requests/1/diff
+GET {{baseUrl}}/azure/pull-requests/183922/diff
 Accept: application/json
 
 ###

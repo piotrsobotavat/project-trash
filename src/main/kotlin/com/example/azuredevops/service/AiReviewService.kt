@@ -32,8 +32,32 @@ class AiReviewService(
     companion object {
         private val log = LoggerFactory.getLogger(AiReviewService::class.java)
 
-        // Azure AI Foundry Responses API path
-        private const val RESPONSES_PATH = "/openai/responses?api-version=2025-04-01-preview"
+        // Azure AI Foundry Responses API path (v1)
+        private const val RESPONSES_PATH = "/openai/v1/responses"
+
+        // All known Azure OpenAI / AI Foundry API versions to probe
+        val CANDIDATE_VERSIONS = listOf(
+            "2025-04-15-preview",
+            "2025-04-01-preview",
+            "2025-03-01-preview",
+            "2025-02-01-preview",
+            "2025-01-01-preview",
+            "2024-12-01-preview",
+            "2024-10-01-preview",
+            "2024-09-01-preview",
+            "2024-08-01-preview",
+            "2024-07-01-preview",
+            "2024-05-01-preview",
+            "2024-04-01-preview",
+            "2024-02-15-preview",
+            "2024-02-01",
+            "2023-12-01-preview",
+            "2023-09-01-preview",
+            "2023-07-01-preview",
+            "2023-06-01-preview",
+            "2023-05-15",
+            "2022-12-01"
+        )
     }
 
     private val openAiRestClient: RestClient by lazy {
@@ -62,16 +86,13 @@ class AiReviewService(
         log.info("Sending message to agent '${props.agentName}': $userMessage")
 
         val requestBody = mapOf(
+            "model" to props.model,
             "input" to listOf(
                 mapOf("role" to "user", "content" to userMessage)
-            ),
-            "agent_reference" to mapOf(
-                "name" to props.agentName,
-                "version" to props.agentVersion,
-                "type" to "agent_reference"
             )
         )
 
+        log.info(RESPONSES_PATH)
         return try {
             @Suppress("UNCHECKED_CAST")
             val response = openAiRestClient.post()
@@ -100,6 +121,86 @@ class AiReviewService(
      */
     fun reviewPullRequest(diffContent: String): String =
         chat("Please review the following pull request diff and provide feedback:\n\n$diffContent")
+
+    // -----------------------------------------------------------------------
+    // Deployment discovery
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lists all model deployments available in this Azure OpenAI resource.
+     * Use the returned "id" value as the model name in application-lcl.yml.
+     */
+    fun listDeployments(): List<Map<String, Any>> {
+        // Try a few known api-versions for the deployments endpoint
+        val versions = listOf(props.apiVersion)
+        for (version in versions) {
+            val uri = "/openai/deployments?api-version=$version"
+            log.info("Listing deployments via GET ${props.endpoint.trimEnd('/')}$uri")
+            try {
+                @Suppress("UNCHECKED_CAST")
+                val response = openAiRestClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .body(Map::class.java) as? Map<String, Any> ?: continue
+                @Suppress("UNCHECKED_CAST")
+                val list = response["data"] as? List<Map<String, Any>> ?: emptyList()
+                log.info("Found ${list.size} deployments: ${list.map { it["id"] }}")
+                return list
+            } catch (ex: Exception) {
+                log.warn("Could not list deployments with api-version=$version: ${ex.message?.take(100)}")
+            }
+        }
+        return emptyList()
+    }
+
+    // -----------------------------------------------------------------------
+    // API version probe
+    // -----------------------------------------------------------------------
+
+    /**
+     * Tries every known API version in sequence and logs the result for each.
+     * Returns a map of version -> outcome ("OK" / error message).
+     */
+    fun probeApiVersions(): Map<String, String> {
+        val testBody = mapOf(
+            "model" to props.model,
+            "input" to listOf(mapOf("role" to "user", "content" to "ping"))
+        )
+
+        val results = linkedMapOf<String, String>()
+
+        log.info("=== Starting API version probe (${CANDIDATE_VERSIONS.size} versions) ===")
+        for (version in CANDIDATE_VERSIONS) {
+            val uri = "$RESPONSES_PATH?api-version=$version"
+            log.info("Trying api-version=$version  →  POST ${props.endpoint.trimEnd('/')}$uri")
+            try {
+                @Suppress("UNCHECKED_CAST")
+                val response = openAiRestClient.post()
+                    .uri(uri)
+                    .body(testBody)
+                    .retrieve()
+                    .body(Map::class.java) as? Map<String, Any>
+
+                val text = if (response != null) extractOutputText(response) else "(empty body)"
+                log.info("  ✅ api-version=$version  →  SUCCESS: $text")
+                results[version] = "OK: $text"
+            } catch (ex: Exception) {
+                val msg = ex.message ?: ex.javaClass.simpleName
+                log.warn("  ❌ api-version=$version  →  ${msg.take(120)}")
+                results[version] = msg.take(200)
+            }
+        }
+
+        log.info("=== Probe complete ===")
+        val working = results.filter { it.value.startsWith("OK") }
+        if (working.isNotEmpty()) {
+            log.info("Working versions: ${working.keys}")
+        } else {
+            log.warn("No working version found. Set the correct one in application-lcl.yml → azure.openai.api-version")
+        }
+
+        return results
+    }
 
     // -----------------------------------------------------------------------
     // Helpers

@@ -1,6 +1,7 @@
 package com.example.azuredevops.controller
 
 import com.example.azuredevops.service.AiReviewService
+import com.example.azuredevops.service.AzureDevOpsService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping
@@ -13,7 +14,18 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/ai")
 @Tag(name = "PR-Review-Accelerator Agent")
-class AiReviewController(private val aiReviewService: AiReviewService) {
+class AiReviewController(
+    private val aiReviewService: AiReviewService,
+    private val azureDevOpsService: AzureDevOpsService
+) {
+
+    @GetMapping("/deployments")
+    @Operation(summary = "List all model deployments available in the Azure OpenAI resource")
+    fun listDeployments(): List<Map<String, Any>> = aiReviewService.listDeployments()
+
+    @GetMapping("/probe-versions")
+    @Operation(summary = "Try all known API versions and return which ones work")
+    fun probeVersions(): Map<String, String> = aiReviewService.probeApiVersions()
 
     @GetMapping("/hello")
     @Operation(summary = "Say hello to the PR-Review-Accelerator agent")
@@ -34,7 +46,6 @@ class AiReviewController(private val aiReviewService: AiReviewService) {
     @Operation(summary = "Ask PR-Review-Accelerator to review a pull request by its ID")
     fun reviewPullRequest(
         @PathVariable id: Int,
-        azureDevOpsService: com.example.azuredevops.service.AzureDevOpsService
     ): Map<String, Any> {
         val diff = azureDevOpsService.getFullDiff(id)
         val diffText = buildDiffText(diff)

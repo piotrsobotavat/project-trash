@@ -1,5 +1,18 @@
 @baseUrl = http://localhost:8080
 
+
+###
+GET {{baseUrl}}/ai/deployments
+Accept: application/json
+
+###
+
+### Probe all known API versions — check logs for results
+GET {{baseUrl}}/ai/probe-versions
+Accept: application/json
+
+###
+
 ### Say hello to the PR-Review-Accelerator agent
 GET {{baseUrl}}/ai/hello
 Accept: application/json
@@ -35,6 +48,6 @@ Accept: application/json
 ###
 
 ### Ask the agent to review pull request #42
-GET {{baseUrl}}/ai/review/pull-requests/42
+GET {{baseUrl}}/ai/review/pull-requests/183922
 Accept: application/json
 
