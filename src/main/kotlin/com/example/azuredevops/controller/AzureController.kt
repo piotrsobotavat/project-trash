@@ -30,5 +30,11 @@ class AzureController(private val service: AzureDevOpsService) {
     fun getPullRequestDiff(
         @PathVariable id: Int
     ): Map<String, Any> = service.getPullRequestDiff(id)
+
+    @GetMapping("/pull-requests/{id}/full-diff")
+    @Operation(summary = "Get full unified diff with actual file content changes for each file in the pull request")
+    fun getFullDiff(
+        @PathVariable id: Int
+    ): Map<String, Any> = service.getFullDiff(id)
 }
 

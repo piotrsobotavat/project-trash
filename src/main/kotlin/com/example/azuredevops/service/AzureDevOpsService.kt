@@ -1,5 +1,7 @@
 package com.example.azuredevops.service
 
+import com.github.difflib.DiffUtils
+import com.github.difflib.UnifiedDiffUtils
 import com.example.azuredevops.config.AzureDevOpsProperties
 import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
@@ -132,5 +134,74 @@ class AzureDevOpsService(
             "totalChanges" to changeEntries.size,
             "changes" to changeEntries
         )
+    }
+
+    fun getFullDiff(pullRequestId: Int): Map<String, Any> {
+        val diffResult = getPullRequestDiff(pullRequestId)
+        val repositoryId = diffResult["repositoryId"] as String
+        val (base, project) = parseOrgUrl()
+
+        @Suppress("UNCHECKED_CAST")
+        val changes = diffResult["changes"] as List<Map<String, Any>>
+
+        val fileDiffs = changes.mapNotNull { change ->
+            val changeType = change["changeType"] as? String ?: return@mapNotNull null
+
+            @Suppress("UNCHECKED_CAST")
+            val item = change["item"] as? Map<String, Any> ?: return@mapNotNull null
+            val path = item["path"] as? String ?: return@mapNotNull null
+            val newObjectId = item["objectId"] as? String
+            val originalObjectId = item["originalObjectId"] as? String
+
+            log.info("Fetching diff for file: $path (changeType=$changeType)")
+
+            val originalLines = if (originalObjectId != null && changeType != "add") {
+                fetchBlobContent(base, project, repositoryId, originalObjectId)
+            } else emptyList()
+
+            val newLines = if (newObjectId != null && changeType != "delete") {
+                fetchBlobContent(base, project, repositoryId, newObjectId)
+            } else emptyList()
+
+            val patch = DiffUtils.diff(originalLines, newLines)
+            val unifiedDiff = UnifiedDiffUtils.generateUnifiedDiff(
+                "a$path", "b$path", originalLines, patch, 3
+            )
+
+            mapOf(
+                "path" to path,
+                "changeType" to changeType,
+                "linesAdded" to patch.deltas.sumOf { it.target.lines.size },
+                "linesRemoved" to patch.deltas.sumOf { it.source.lines.size },
+                "diff" to unifiedDiff.joinToString("\n")
+            )
+        }
+
+        return mapOf(
+            "pullRequestId" to pullRequestId,
+            "repositoryId" to repositoryId,
+            "totalFiles" to fileDiffs.size,
+            "files" to fileDiffs
+        )
+    }
+
+    private fun fetchBlobContent(
+        base: String,
+        project: String,
+        repositoryId: String,
+        objectId: String
+    ): List<String> {
+        val url = "$base/$project/_apis/git/repositories/$repositoryId/blobs/$objectId?\$format=text&$apiVersion"
+        log.debug("Fetching blob: $url")
+        return try {
+            val content = restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(String::class.java) ?: ""
+            content.lines()
+        } catch (ex: RestClientException) {
+            log.warn("Could not fetch blob $objectId: ${ex.message}")
+            emptyList()
+        }
     }
 }
