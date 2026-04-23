@@ -14,6 +14,22 @@ interface Props {
   repositoryId?: string;
 }
 
+const STORAGE_KEY = "ai-reviews";
+
+function loadReviews(): Record<number, AiReviewResult> {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveReview(result: AiReviewResult) {
+  const reviews = loadReviews();
+  reviews[result.pullRequestId] = result;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
+}
+
 export default function PullRequests({ repositoryId }: Props) {
   const [prs, setPrs] = useState<PullRequest[]>([]);
   const [status, setStatus] = useState("active");
@@ -26,6 +42,8 @@ export default function PullRequests({ repositoryId }: Props) {
   const [diffLoading, setDiffLoading] = useState(false);
   const [reviewResult, setReviewResult] = useState<AiReviewResult | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [savedReviews, setSavedReviews] =
+    useState<Record<number, AiReviewResult>>(loadReviews);
 
   useEffect(() => {
     setLoading(true);
@@ -44,7 +62,7 @@ export default function PullRequests({ repositoryId }: Props) {
     setSelectedPr(prId);
     setDiffLoading(true);
     setFullDiff(null);
-    setReviewResult(null);
+    setReviewResult(savedReviews[prId] ?? null);
     try {
       const entries = await fetchDiff(prId);
       setDiffEntries(entries);
@@ -74,6 +92,8 @@ export default function PullRequests({ repositoryId }: Props) {
     try {
       const result = await requestAiReview(prId);
       setReviewResult(result);
+      saveReview(result);
+      setSavedReviews(loadReviews());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "AI review failed");
     } finally {
@@ -115,6 +135,9 @@ export default function PullRequests({ repositoryId }: Props) {
               <span className={`pr-status pr-status--${pr.status}`}>
                 {pr.status}
               </span>
+              {savedReviews[pr.pullRequestId] && (
+                <span className="pr-reviewed-badge">◈ reviewed</span>
+              )}
               <strong className="pr-title">
                 #{pr.pullRequestId} {pr.title}
               </strong>
@@ -160,7 +183,11 @@ export default function PullRequests({ repositoryId }: Props) {
                       onClick={() => runAiReview(pr.pullRequestId)}
                       disabled={reviewLoading}
                     >
-                      {reviewLoading ? "⟳ AI Reviewing..." : "◈ AI Review"}
+                      {reviewLoading
+                        ? "⟳ AI Reviewing..."
+                        : savedReviews[pr.pullRequestId]
+                          ? "◈ Re-run AI Review"
+                          : "◈ AI Review"}
                     </button>
                   </>
                 )}

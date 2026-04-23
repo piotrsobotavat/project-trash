@@ -7,7 +7,7 @@ azure:
     endpoint: ${AZURE_OPENAI_ENDPOINT:}
     api-key: ${AZURE_OPENAI_API_KEY:}
     agent-name: PR-Review-Accelerator
-    agent-version: "4"
+    agent-version: "5"
     api-version: "2025-04-01-preview"
     model: gpt-5.3-codex
 

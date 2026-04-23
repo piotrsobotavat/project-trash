@@ -14,8 +14,8 @@ function App() {
       <div className="grid-bg" />
       <header className="app-header">
         <h1>
-          <span className="glow-text">⟨</span> Azure DevOps{" "}
-          <span className="glow-text">Dashboard</span>{" "}
+          <span className="glow-text">⟨</span> Mega{" "}
+          <span className="glow-text">Review</span>{" "}
           <span className="glow-text">⟩</span>
         </h1>
         <nav>
