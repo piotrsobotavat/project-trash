@@ -66,3 +66,15 @@ export async function fetchFullDiff(prId: number): Promise<FileDiff[]> {
   const data = await res.json();
   return data.files ?? [];
 }
+
+export interface AiReviewResult {
+  pullRequestId: number;
+  review: string;
+  commentThreadId: string | number;
+}
+
+export async function requestAiReview(prId: number): Promise<AiReviewResult> {
+  const res = await fetch(`/ai/review/pull-requests/${prId}`);
+  if (!res.ok) throw new Error(`AI review failed: ${res.status}`);
+  return res.json();
+}

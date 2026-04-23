@@ -1,17 +1,20 @@
 azure:
   devops:
-    org-url: https://vf-commonit.visualstudio.com/ORG_HERE
-    pat: PAT_HERE
+    org-url: ${AZURE_DEVOPS_ORG_URL:}
+    pat: ${AZURE_DEVOPS_PAT:}
+
   openai:
-    endpoint: https://PR-Review-Accelerator.services.ai.azure.com/api/projects/PR-Review-Accelerator
+    endpoint: ${AZURE_OPENAI_ENDPOINT:}
     api-key: ${AZURE_OPENAI_API_KEY:}
     agent-name: PR-Review-Accelerator
-    agent-version: "3"
+    agent-version: "4"
+    api-version: "2025-04-01-preview"
+    model: gpt-5.3-codex
 
 proxy:
   host: ${PROXY_HOST:10.248.20.80}
   port: ${PROXY_PORT:8080}
-  enabled: ${PROXY_ENABLED:true}
+  enabled: ${PROXY_ENABLED:false}
 
 server:
   port: 8080

@@ -3,9 +3,11 @@ import {
   fetchPullRequests,
   fetchDiff,
   fetchFullDiff,
+  requestAiReview,
   type PullRequest,
   type DiffEntry,
   type FileDiff,
+  type AiReviewResult,
 } from "../api";
 
 interface Props {
@@ -22,6 +24,8 @@ export default function PullRequests({ repositoryId }: Props) {
   const [diffEntries, setDiffEntries] = useState<DiffEntry[]>([]);
   const [fullDiff, setFullDiff] = useState<FileDiff[] | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
+  const [reviewResult, setReviewResult] = useState<AiReviewResult | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -40,6 +44,7 @@ export default function PullRequests({ repositoryId }: Props) {
     setSelectedPr(prId);
     setDiffLoading(true);
     setFullDiff(null);
+    setReviewResult(null);
     try {
       const entries = await fetchDiff(prId);
       setDiffEntries(entries);
@@ -60,6 +65,19 @@ export default function PullRequests({ repositoryId }: Props) {
       setError(e instanceof Error ? e.message : "Failed to load full diff");
     } finally {
       setDiffLoading(false);
+    }
+  };
+
+  const runAiReview = async (prId: number) => {
+    setReviewLoading(true);
+    setReviewResult(null);
+    try {
+      const result = await requestAiReview(prId);
+      setReviewResult(result);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "AI review failed");
+    } finally {
+      setReviewLoading(false);
     }
   };
 
@@ -137,6 +155,13 @@ export default function PullRequests({ repositoryId }: Props) {
                     >
                       Show Full Diff
                     </button>
+                    <button
+                      className="btn-ai-review"
+                      onClick={() => runAiReview(pr.pullRequestId)}
+                      disabled={reviewLoading}
+                    >
+                      {reviewLoading ? "⟳ AI Reviewing..." : "◈ AI Review"}
+                    </button>
                   </>
                 )}
 
@@ -186,6 +211,22 @@ export default function PullRequests({ repositoryId }: Props) {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {reviewLoading && (
+                  <p className="loading">AI is reviewing this PR...</p>
+                )}
+
+                {reviewResult && (
+                  <div className="ai-review-result">
+                    <div className="ai-review-header">
+                      <span className="ai-review-badge">◈ AI Review</span>
+                      <span className="ai-review-meta">
+                        Comment added to PR #{reviewResult.pullRequestId}
+                      </span>
+                    </div>
+                    <div className="ai-review-body">{reviewResult.review}</div>
                   </div>
                 )}
               </div>

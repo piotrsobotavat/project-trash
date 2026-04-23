@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/azure": "http://localhost:8080",
+      "/ai": "http://localhost:8080",
     },
   },
 });
