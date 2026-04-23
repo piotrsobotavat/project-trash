@@ -47,7 +47,7 @@ Accept: application/json
 
 ###
 
-### Ask the agent to review pull request #42
+### Ask the agent to review pull request #183922
 GET {{baseUrl}}/ai/review/pull-requests/183922
 Accept: application/json
 

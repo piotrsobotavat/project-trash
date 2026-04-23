@@ -43,14 +43,19 @@ class AiReviewController(
     }
 
     @GetMapping("/review/pull-requests/{id}")
-    @Operation(summary = "Ask PR-Review-Accelerator to review a pull request by its ID")
+    @Operation(summary = "Ask PR-Review-Accelerator to review a pull request by its ID and post the result as a comment")
     fun reviewPullRequest(
         @PathVariable id: Int,
     ): Map<String, Any> {
         val diff = azureDevOpsService.getFullDiff(id)
         val diffText = buildDiffText(diff)
         val review = aiReviewService.reviewPullRequest(diffText)
-        return mapOf("pullRequestId" to id, "review" to review)
+        val thread = azureDevOpsService.postPullRequestComment(id, review)
+        return mapOf(
+            "pullRequestId" to id,
+            "review" to review,
+            "commentThreadId" to (thread["id"] ?: "unknown")
+        )
     }
 
     @Suppress("UNCHECKED_CAST")

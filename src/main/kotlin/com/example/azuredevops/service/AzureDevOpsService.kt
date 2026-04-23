@@ -185,6 +185,54 @@ class AzureDevOpsService(
         )
     }
 
+    /**
+     * Posts a comment thread on a pull request.
+     */
+    fun postPullRequestComment(pullRequestId: Int, comment: String): Map<String, Any> {
+        val (base, project) = parseOrgUrl()
+
+        // 1. Resolve repositoryId from PR details
+        val prUrl = "$base/$project/_apis/git/pullrequests/$pullRequestId?$apiVersion"
+        val pr = restClient.get().uri(prUrl).retrieve().body(Map::class.java)
+            ?: error("PR $pullRequestId not found")
+
+        @Suppress("UNCHECKED_CAST")
+        val repo = pr["repository"] as? Map<String, Any>
+            ?: error("PR $pullRequestId has no repository info")
+        val repositoryId = repo["id"] as? String
+            ?: error("PR $pullRequestId repository has no id")
+
+        // 2. POST a new comment thread
+        val url = "$base/$project/_apis/git/repositories/$repositoryId" +
+                "/pullRequests/$pullRequestId/threads?$apiVersion"
+        log.info("Posting comment to PR $pullRequestId in repo $repositoryId")
+
+        val body = mapOf(
+            "comments" to listOf(
+                mapOf(
+                    "parentCommentId" to 0,
+                    "content" to comment,
+                    "commentType" to 1
+                )
+            ),
+            "status" to 1
+        )
+
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val response = restClient.post()
+                .uri(url)
+                .body(body)
+                .retrieve()
+                .body(Map::class.java) as? Map<String, Any> ?: emptyMap()
+            log.info("Comment posted successfully to PR $pullRequestId (threadId=${response["id"]})")
+            response
+        } catch (ex: RestClientException) {
+            log.error("Failed to post comment to PR $pullRequestId: ${ex.message}", ex)
+            throw ex
+        }
+    }
+
     private fun fetchBlobContent(
         base: String,
         project: String,
